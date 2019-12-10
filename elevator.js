@@ -3,168 +3,108 @@
         var delayedUp = []
         var delayedDown = []
         console.clear()
-        
-        var queue = function(elevator, floorNum){
-            if (!elevator.destinationQueue.includes(floorNum){
-                elevator.destinationQueue.push(floorNum)
+
+        var updateQueue = function(up, down, currentFloor, queue, floorNum){
+            if (up){
+                if (floorNum < currentFloor){
+                    if (!delayedUp.includes(floorNum)){
+                        delayedUp.push(floorNum)
+                        console.log("Delayed Floor Up call for " + floorNum + " -> " + delayedUp)
+                    }
+                } else {
+                    console.log("Floor Up call for " + floorNum)
+                }
+            } else if (down) {
+                if (floorNum > currentFloor){
+                    if (!delayedDown.includes(floorNum)){
+                        delayedDown.push(floorNum)
+                        console.log("Delayed Floor Down call for " + floorNum + " -> " + delayedDown)
+                    }
+                } else {
+                    console.log("Floor Down call for " + floorNum + " handled -> " + queue)
+                }
+            } else if (!queue.includes(floorNum)){
+                queue.push(floorNum)
+                console.log("Floor " + floorNum + " handled -> " + queue)
             }
+            return queue
         }
-        test("b")
+
         for (var e = 0; e < elevators.length; e++){
             var elevator = elevators[e]
-            test("c")
             console.log("init elevator " + e)
             ////////// ELEVATOR BUTTON PRESSED /////////
             elevator.on("floor_button_pressed", function(floorNum){
                 console.log("Elevator: Floor " + floorNum + " added to -> " + this.destinationQueue)
-                if (this.destinationDirection() === "stopped"){
-                    if (this.currentFloor() < floorNum){
-                        console.log("Elevator going UP!")
-                    } else {
-                        console.log("Elevator going DOWN!")
-                    }
-                    this.goingUpIndicator(this.currentFloor() < floorNum)
-                    this.goingDownIndicator(floorNum < this.currentFloor())
-                    if (this.goingUpIndicator()){
-                        //add all delayed ups
-                    } else {
-                        //add all delayed downs
-                    }
+                elevator.goingUpIndicator(elevator.currentFloor() < floorNum)
+                elevator.goingDownIndicator(floorNum < elevator.currentFloor())
+                this.destinationQueue = updateQueue(this.goingUpIndicator(), this.goingDownIndicator(), this.currentFloor(), this.destinationQueue, floorNum)
+                elevator.destinationQueue.sort()
+                if (elevator.goingDownIndicator()){
+                    elevator.destinationQueue.sort().reverse()
                 }
-                if (!this.destinationQueue.includes(floorNum)){
-                    console.log("Adding " + floorNum + " -> " + this.destinationQueue)
-                    this.destinationQueue.push(floorNum)
-                }
-                this.destinationQueue.sort()
-                if (this.goingDownIndicator()){
-                    this.destinationQueue.reverse()
-                }
-                this.checkDestinationQueue()
-                console.log("Elevator: " + this.destinationQueue)
+                elevator.checkDestinationQueue()
             }) //end floor button pressed
-            
+
             ////////// ELEVATOR IDLE /////////
-            // Whenever the elevator is idle (has no more queued destinations) ...
             elevator.on("idle", function() {
-                console.log("idle: " + this.destinationQueue)
-                //see if we have any delayed things to process
-                if (this.goingUpIndicator() && delayedUp.length > 0){
-                    console.log("Elevator going UP!")
-                    for (var x = 0; x < delayedUp.length; x++){
-                        if (!this.destinationQueue.includes(delayedUp[x])){
-                            console.log("Adding " + delayedUp[x] + " -> " + this.destinationQueue)
-                            this.destinationQueue.push(delayedUp[x])
-                        }
-                    }
-                    delayedUp = []
-                    this.destinationQueue.sort()
-                } else if (this.goingDownIndicator() && delayedDown.length > 0){
-                    this.goingUpIndicator(false)
-                    this.goingDownIndicator(true)
-                    console.log("Elevator going DOWN!")
-                    for (var x = 0; x < delayedDown.length; x++){
-                        if (!this.destinationQueue.includes(delayedDown[x])){
-                            console.log("Adding " + delayedDown[x] + " -> " + this.destinationQueue)
-                            this.destinationQueue.push(delayedDown[x])
-                        }
-                    }
-                    delayedDown = []
-                    this.destinationQueue.sort().reverse()
-                }
-            }) //end idle
-            
-            ////////// ELEVATOR STOPPED /////////
-            elevator.on("stopped_at_floor", function(floorNum){
-                //check elevator state and determine if we need to switch directions
-                console.log("stopped at " + floorNum + ": " + this.destinationQueue)
-                if (floorNum == floors.length -1 && delayedDown.length > 0){
-                    this.goingUpIndicator(false)
-                    this.goingDownIndicator(true)
-                    console.log("Elevator going DOWN!")
-                    for (var x = 0; x < delayedDown.length; x++){
-                        if (!this.destinationQueue.includes(delayedDown[x])){
-                            console.log("Adding " + delayedDown[x] + " -> " + this.destinationQueue)
-                            this.destinationQueue.push(delayedDown[x])
-                        }
-                    }
-                    delayedDown = []
-                    this.destinationQueue.sort().reverse()
-                }
-                if (floorNum == 0 && delayedUp.length > 0){
+                if (delayedUp.length > 0){
+                    console.log("Handling delayed up...")
                     this.goingUpIndicator(true)
                     this.goingDownIndicator(false)
-                    console.log("Elevator going UP!")
-                    for (var x = 0; x < delayedUp.length; x++){
-                        if (!this.destinationQueue.includes(delayedUp[x])){
-                            console.log("Adding " + delayedUp[x] + " -> " + this.destinationQueue)
-                            this.destinationQueue.push(delayedUp[x])
-                        }
-                    }
-                    delayedUp = []
-                    this.destinationQueue.sort()
+                } else if (delayedDown.length > 0){
+                    console.log("Handling delayed down...")
+                    this.goingUpIndicator(false)
+                    this.goingDownIndicator(true)
+                } else {
+                    console.log("idle...")
+                    this.goingUpIndicator(false)
+                    this.goingDownIndicator(false)
                 }
-                if (this.destinationQueue.length > 0){
-                    console.log("Next stop " + this.destinationQueue[0])
+                if (this.goingDownIndicator()){
+                    console.log("Delayed Down: " + delayedDown)
+                    for (var x = 0; x < delayedDown.length; x++){
+                        this.destinationQueue.push(delayedDown[x])
+                    }
+                    this.destinationQueue.sort().reverse()
+                    console.log("Updated queue: " + this.destinationQueue)
+                    console.log("Delayed down cleared!")
+                    delayedDown = []
+                    
+                }
+                if (this.goingUpIndicator()){
+                    console.log("Delayed Up: " + delayedUp)
+                    for (var x = 0; x < delayedUp.length; x++){
+                        this.destinationQueue.push(delayedUp[x])
+                    }
+                    this.destinationQueue.sort()
+                    console.log("Updated queue: " + this.destinationQueue)
+                    console.log("Delayed up cleared!")
+                    delayedUp = []
                 }
                 this.checkDestinationQueue()
-            })//end stopped at floor
-
+            }) //end idle
 
             for (var f = 0; f < floors.length; f++){
                 ////////// FLOOR UP BUTTON PRESSED /////////
                 floors[f].on("up_button_pressed", function(){
                     console.log("Call: Floor " + this.floorNum() + " (Up) -> " + elevator.destinationQueue)
-                    if (elevator.destinationDirection() === "stopped" ){
+                    if (elevator.destinationDirection() === "stopped"){
                         elevator.goingUpIndicator(true)
                         elevator.goingDownIndicator(false)
-                        console.log("Elevator going UP!")
-                        if (!elevator.destinationQueue.includes(this.floorNum())){
-                            console.log("Adding " + this.floorNum() + " -> " + elevator.destinationQueue)
-                            elevator.destinationQueue.push(this.floorNum())
-                        }
-                    } else if (elevator.goingUpIndicator()){
-                        if (this.floorNum() >= elevator.currentFloor()){
-                            console.log("Handling Floor " + this.floorNum() + " UP call: " + this.floorNum())
-                            if (!elevator.destinationQueue.includes(this.floorNum())){
-                                console.log("Adding " + this.floorNum() + " -> " + elevator.destinationQueue)
-                                elevator.destinationQueue.push(this.floorNum())
-                            }
-                        } else if (!delayedUp.includes(this.floorNum())){
-                            console.log("Delayed Up: " + this.floorNum() + " -> " + delayedUp)
-                            delayedUp.push(this.floorNum())
-                            delayedUp.sort()
-                        }
                     }
+                    elevator.destinationQueue = updateQueue(elevator.goingUpIndicator(), elevator.goingDownIndicator(), elevator.currentFloor(), elevator.destinationQueue, this.floorNum())
                     elevator.checkDestinationQueue()
                 }) //end up_button_pressed
-                
+
                 ////////// FLOOR DOWN BUTTON PRESSED /////////
                 floors[f].on("down_button_pressed", function(){
                     console.log("Call: Floor " + this.floorNum() + " (Down) -> " + elevator.destinationQueue)
                     if (elevator.destinationDirection() === "stopped"){
                         elevator.goingUpIndicator(false)
                         elevator.goingDownIndicator(true)
-                        console.log("Elevator going DOWN!")
-                        if (!elevator.destinationQueue.includes(this.floorNum())){
-                            console.log("Adding " + this.floorNum() + " -> " + elevator.destinationQueue)
-                            elevator.destinationQueue.push(this.floorNum())
-                            elevator.checkDestinationQueue()
-                        }
-                    } else if (elevator.goingDownIndicator()){
-                        if (this.floorNum() <= elevator.currentFloor()){
-                            if (!elevator.destinationQueue.includes(this.floorNum())){
-                                console.log("Handling Floor Down call: " + this.floorNum())
-                                console.log("Adding " + this.floorNum() + " to queue -> " + elevator.destinationQueue)
-                                elevator.destinationQueue.push(this.floorNum())
-                                elevator.checkDestinationQueue()
-                            }
-                        } else if (!delayedDown.includes(this.floorNum())){
-                            console.log("Delayed Down: " + this.floorNum() + " -> " + delayedDown)
-                            delayedDown.push(this.floorNum())
-                            delayedDown.sort().reverse()
-                        }
-
                     }
+                    elevator.destinationQueue = updateQueue(elevator.goingUpIndicator(), elevator.goingDownIndicator(), elevator.currentFloor(), elevator.destinationQueue, this.floorNum())
                     elevator.checkDestinationQueue()
                 }) //end down_button_pressed
             }
